@@ -1,13 +1,13 @@
 # Base para Projeto 1 - Robótica 
 
-Nome do grupo: 
+Nome do grupo: Placeholder
 
 ____________
 
 Nome dos integrantes: 
 
-* pessoa 1
-* pessoa 2
+* Gabriel Couto Lóssio de Almeida
+* Nicolas Byung Kwan Cho
 * pessoa 3
 * pessoa 4
 

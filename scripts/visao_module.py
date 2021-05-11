@@ -35,6 +35,24 @@ def processa(frame):
 
     return centro, result_frame, result_tuples
 
+def center_of_mass(mask):
+    """ Retorna uma tupla (cx, cy) que desenha o centro do contorno"""
+    M = cv2.moments(mask)
+    # Usando a expressão do centróide definida em: https://en.wikipedia.org/wiki/Image_moment
+    if M["m00"] == 0:
+        M["m00"] = 1
+    cX = int(M["m10"] / M["m00"])
+    cY = int(M["m01"] / M["m00"])
+    return [int(cX), int(cY)]
+
+def crosshair(img, point, size, color):
+    """ Desenha um crosshair centrado no point.
+        point deve ser uma tupla (x,y)
+        color é uma tupla R,G,B uint8
+    """
+    x,y = point
+    cv2.line(img,(x - size,y),(x + size,y),color,5)
+    cv2.line(img,(x,y - size),(x, y + size),color,5)
 
 
 def identifica_cor(frame):
@@ -46,25 +64,27 @@ def identifica_cor(frame):
     # vermelho puro (H=0) estão entre H=-8 e H=8.
     # Precisamos dividir o inRange em duas partes para fazer a detecção
     # do vermelho:
-    frame_hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    bgr = frame.copy()
 
-    cor_menor = np.array([0, 50, 50])
-    cor_maior = np.array([8, 255, 255])
+    frame_hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
+
+    cor_menor = np.array([25, 50,50])
+    cor_maior = np.array([32, 255,255])
     segmentado_cor = cv2.inRange(frame_hsv, cor_menor, cor_maior)
 
-    cor_menor = np.array([172, 50, 50])
-    cor_maior = np.array([180, 255, 255])
-    segmentado_cor += cv2.inRange(frame_hsv, cor_menor, cor_maior)
+   # cor_menor = np.array([105, 50,50])
+    #cor_maior = np.array([125, 255,255])
+    #segmentado_cor += cv2.inRange(frame_hsv, cor_menor, cor_maior)
 
     # Note que a notacão do numpy encara as imagens como matriz, portanto o enderecamento é
     # linha, coluna ou (y,x)
     # Por isso na hora de montar a tupla com o centro precisamos inverter, porque
-    centro = (frame.shape[1]//2, frame.shape[0]//2)
+    centro = (int(frame.shape[1]//2), int(frame.shape[0]//2))
 
 
     def cross(img_rgb, point, color, width,length):
-        cv2.line(img_rgb, (point[0] - length/2, point[1]),  (point[0] + length/2, point[1]), color ,width, length)
-        cv2.line(img_rgb, (point[0], point[1] - length/2), (point[0], point[1] + length/2),color ,width, length)
+        cv2.line(img_rgb, (int(point[0] - length/2), int(point[1])),  (int(point[0] + length/2), int(point[1])), color ,width, length)
+        cv2.line(img_rgb, (int(point[0]), int(point[1] - length/2)), (int(point[0]), int(point[1] + length/2)),color ,width, length)
 
 
 
@@ -73,33 +93,14 @@ def identifica_cor(frame):
     # pequenos contornos muito próximos em um só.
     segmentado_cor = cv2.morphologyEx(segmentado_cor,cv2.MORPH_CLOSE,np.ones((7, 7)))
 
-    # Encontramos os contornos na máscara e selecionamos o de maior área
-    #contornos, arvore = cv2.findContours(segmentado_cor.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    img_out, contornos, arvore = cv2.findContours(segmentado_cor.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    segmentado_cor_bgr = cv2.cvtColor(segmentado_cor, cv2.COLOR_GRAY2BGR)
 
-    maior_contorno = None
-    maior_contorno_area = 0
+    cm = center_of_mass(segmentado_cor)
 
-    for cnt in contornos:
-        area = cv2.contourArea(cnt)
-        if area > maior_contorno_area:
-            maior_contorno = cnt
-            maior_contorno_area = area
+    crosshair(segmentado_cor_bgr, centro, 25, color=(0,255,0))
 
-    # Encontramos o centro do contorno fazendo a média de todos seus pontos.
-    if not maior_contorno is None :
-        cv2.drawContours(frame, [maior_contorno], -1, [0, 0, 255], 5)
-        maior_contorno = np.reshape(maior_contorno, (maior_contorno.shape[0], 2))
-        media = maior_contorno.mean(axis=0)
-        media = media.astype(np.int32)
-        cv2.circle(frame, (media[0], media[1]), 5, [0, 255, 0])
-        cross(frame, centro, [255,0,0], 1, 17)
-    else:
-        media = (0, 0)
 
-    # Representa a area e o centro do maior contorno no frame
-    font = cv2.FONT_HERSHEY_COMPLEX_SMALL
-    cv2.putText(frame,"{:d} {:d}".format(*media),(20,100), 1, 4,(255,255,255),2,cv2.LINE_AA)
-    cv2.putText(frame,"{:0.1f}".format(maior_contorno_area),(20,50), 1, 4,(255,255,255),2,cv2.LINE_AA)
+    crosshair(segmentado_cor_bgr, cm, 15, color=(0,0,255))
 
-    return centro, result_frame, result_tuples
+
+    return cm, segmentado_cor_bgr#, result_tuples
