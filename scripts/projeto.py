@@ -172,7 +172,7 @@ if __name__=="__main__":
         # Inicializando - por default gira no sentido anti-horário
         while not rospy.is_shutdown():
             print('Estado:',ESTADO)
-            if ESTADO == 1 :                                #segue linha amarela
+            if ESTADO == 1 :                                            #segue linha amarela
                 #print("centro_massa:",  media[0])
                 #print("centro_imagem:", centro[0])
                 if media[0] > centro[0]:
@@ -183,16 +183,18 @@ if __name__=="__main__":
                     vel = Twist(Vector3(0.2,0,0), Vector3(0,0,0.1))
                 velocidade_saida.publish(vel)
             
-                if distancia < 1.5 and id == 100:
+                if distancia < 1 and id == 100:
                     ESTADO = 2
                 if distancia < 1 and id == 150:
                     ESTADO = 3
                 if distancia < 1 and id == 50:
                     ESTADO = 3 
+                if distancia < 0.5 and id ==200:
+                    ESTADO = 5
 
 
-            if ESTADO == 2:                                #pega o caminho da esquerda
-                vel = Twist(Vector3(0,0,0), Vector3(0,0,pi/20))
+            if ESTADO == 2:                                          #pega o caminho da esquerda na primeira bifurcacao(gira 45 graus)
+                vel = Twist(Vector3(0,0,0), Vector3(0,0,pi/22))
                 for i in range(5):
                     velocidade_saida.publish(vel)
                     rospy.sleep(1)
@@ -200,14 +202,14 @@ if __name__=="__main__":
                 y_primeira_bif = y
                 ESTADO = 1
             
-            if ESTADO == 3:                                 #vira 180 graus depois de chegar em beco sem saida
+            if ESTADO == 3:                                             #vira 180 graus depois de chegar em beco sem saida
                 vel = Twist(Vector3(0,0,0), Vector3(0,0,pi/5))    
                 for i in range(5):
                     velocidade_saida.publish(vel)
                     rospy.sleep(1)
                 ESTADO = 4
             
-            if ESTADO == 4:                                    #Segue linha amarela mas vira ao se aproximar da bifurcação determinada pela odometria
+            if ESTADO == 4:                                             #Segue linha amarela mas vira 45 graus ao se aproximar da bifurcação determinada pela odometria
                 if media[0] > centro[0]:
                     #print("direita")
                     vel = Twist(Vector3(0.2,0,0), Vector3(0,0,-0.1))
@@ -215,8 +217,41 @@ if __name__=="__main__":
                     #print("esquerda")
                     vel = Twist(Vector3(0.2,0,0), Vector3(0,0,0.1))
                 velocidade_saida.publish(vel)
-                if distancia_euclidiana(x_primeira_bif, y_primeira_bif) < 0.5:
+                if distancia_euclidiana(x_primeira_bif, y_primeira_bif) < 0.4:
                     ESTADO = 2 
+            
+            if ESTADO == 5:
+                vel = Twist(Vector3(0,0,0), Vector3(0,0,pi/10))         #pega o caminho da esquerda na bifurcacao do balao (gira 90 graus)
+                for i in range(5):
+                    velocidade_saida.publish(vel)
+                    rospy.sleep(1)
+                x_segunda_bif = x
+                y_segunda_bif = y
+
+                vel = Twist(Vector3(0.2,0,0), Vector3(0,0,0))
+                for i in range(2):
+                    velocidade_saida.publish(vel)
+                    rospy.sleep(1)
+
+                ESTADO = 6
+
+            if ESTADO == 6:                                                #Segue linha amarela mas vira 90 graus ao se aproximar da bifurcação determinada pela odometria
+                if media[0] > centro[0]:
+                    #print("direita")
+                    vel = Twist(Vector3(0.2,0,0), Vector3(0,0,-0.1))
+                if media[0] < centro[0]:
+                    #print("esquerda")
+                    vel = Twist(Vector3(0.2,0,0), Vector3(0,0,0.1))
+                velocidade_saida.publish(vel)
+
+                if distancia_euclidiana(x_segunda_bif, y_segunda_bif) < 0.2:
+                    vel = Twist(Vector3(0,0,0), Vector3(0,0,pi/10))         #pega o caminho da esquerda na bifurcacao do balao (gira 90 graus)
+                    for i in range(5):
+                        velocidade_saida.publish(vel)
+                        rospy.sleep(1)
+                    ESTADO = 1 
+
+                
 
     
 
