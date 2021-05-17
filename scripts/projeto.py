@@ -168,10 +168,17 @@ if __name__=="__main__":
     tfl = tf2_ros.TransformListener(tf_buffer) #conversao do sistema de coordenadas 
     tolerancia = 25
 
+    # GIRA 180 GRAUS
+    # vel = Twist(Vector3(0,0,0), Vector3(0,0,pi/5))    
+    # for i in range(6):
+    #     velocidade_saida.publish(vel)
+    #     rospy.sleep(1)
+
     try:
         # Inicializando - por default gira no sentido anti-horário
         while not rospy.is_shutdown():
             print('Estado:',ESTADO)
+            print(distancia)
             if ESTADO == 1 :                                            #segue linha amarela
                 #print("centro_massa:",  media[0])
                 #print("centro_imagem:", centro[0])
@@ -189,7 +196,7 @@ if __name__=="__main__":
                     ESTADO = 3
                 if distancia < 1 and id == 50:
                     ESTADO = 3 
-                if distancia < 0.5 and id ==200:
+                if distancia < 0.8 and id ==200:
                     ESTADO = 5
 
 
@@ -238,10 +245,10 @@ if __name__=="__main__":
             if ESTADO == 6:                                                #Segue linha amarela mas vira 90 graus ao se aproximar da bifurcação determinada pela odometria
                 if media[0] > centro[0]:
                     #print("direita")
-                    vel = Twist(Vector3(0.2,0,0), Vector3(0,0,-0.1))
+                    vel = Twist(Vector3(0.1,0,0), Vector3(0,0,-0.1))
                 if media[0] < centro[0]:
                     #print("esquerda")
-                    vel = Twist(Vector3(0.2,0,0), Vector3(0,0,0.1))
+                    vel = Twist(Vector3(0.1,0,0), Vector3(0,0,0.1))
                 velocidade_saida.publish(vel)
 
                 if distancia_euclidiana(x_segunda_bif, y_segunda_bif) < 0.2:
@@ -257,5 +264,6 @@ if __name__=="__main__":
 
     except rospy.ROSInterruptException:
         print("Ocorreu uma exceção com o rospy")
+
 
 
