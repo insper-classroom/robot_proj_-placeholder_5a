@@ -4,8 +4,6 @@
 from __future__ import print_function, division
 import rospy
 import numpy as np
-import numpy
-import tf
 import math
 import cv2
 import cv2.aruco as aruco
@@ -13,9 +11,6 @@ from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Image, CompressedImage
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import LaserScan
-from numpy import linalg
-from tf import transformations
-from tf import TransformerROS
 import tf2_ros
 from geometry_msgs.msg import Twist, Vector3, Pose, Vector3Stamped
 
@@ -29,6 +24,11 @@ print("PARA TER OS PESOS DA REDE NEURAL")
 
 import visao_module
 
+######################################## MISSÕES
+goal1 = ("blue", 12, "dog")
+goal2 = ("green", 23, "horse")
+goal3 = ("red", 11, "cow")
+########################################
 
 bridge = CvBridge()
 
@@ -42,8 +42,12 @@ minv = 0
 maxv = 10
 distancia = 20000
 id = 8000
+area_creeper = -20
+cm_creeper = [640,240]
 
 area = 0.0 # Variavel com a area do maior contorno
+
+SEGUIR_PISTA_APENAS = False  #NAO PROCURA CREEPER
 
 # Só usar se os relógios ROS da Raspberry e do Linux desktop estiverem sincronizados. 
 # Descarta imagens que chegam atrasadas demais
@@ -98,6 +102,8 @@ def roda_todo_frame(imagem):
     global centro
     global resultados
     global id
+    global area_creeper
+    global cm_creeper
 
     now = rospy.get_rostime()
     imgtime = imagem.header.stamp
@@ -143,10 +149,13 @@ def roda_todo_frame(imagem):
 
         aruco.drawDetectedMarkers(cv_image, corners, ids)          
 
+        if SEGUIR_PISTA_APENAS == False:
+            cm_creeper, img_segmentada_creeper, area_creeper = visao_module.identifica_cor_creeper(cv_image, goal1[0])   #ALTERAR GOAL PARA DETERMINADO CREEPER
 
-        media, img_segmentada = visao_module.identifica_cor(cv_image)
+        media, img_segmentada_pista = visao_module.identifica_cor_pista(cv_image)
 
-        #cv2.imshow("cv_image_segmentada",img_segmentada)
+        #cv2.imshow("cv_image_segmentada_creeper",img_segmentada_creeper)
+        #cv2.imshow("cv_image_segmentada_pista",img_segmentada_pista)
         cv2.imshow("cv_image",cv_image)
         cv2.waitKey(1)
     except CvBridgeError as e:
@@ -177,11 +186,24 @@ if __name__=="__main__":
     #     velocidade_saida.publish(vel)
     #     rospy.sleep(1)
     vira = True
+    tem_creeper = False
+    #ESTADO = 3   #VIRA 180 NO INICIO DO PERCURSO
     try:
         # Inicializando - por default gira no sentido anti-horário
         while not rospy.is_shutdown():
+            
+            #print(area_creeper)
+            if area_creeper > 1350 and tem_creeper == False:
+                vel = Twist(Vector3(0.1,0,0), Vector3(0,0,0.05))
+                velocidade_saida.publish(vel)
+                vel = Twist(Vector3(0.05,0,0), Vector3(0,0,0))
+                velocidade_saida.publish(vel)
+                vel = Twist(Vector3(0.0,0,0), Vector3(0,0,0))
+                velocidade_saida.publish(vel)
+                ESTADO = 5
+
             print('Estado:',ESTADO)
-            print(distancia)
+            #print(distancia)
             if ESTADO == 1 :                                            #segue linha amarela
                 #print("centro_massa:",  media[0])
                 #print("centro_imagem:", centro[0])
@@ -194,26 +216,67 @@ if __name__=="__main__":
                 velocidade_saida.publish(vel)
             
                 if distancia < 1 and id == 100:
+                    vel = Twist(Vector3(0.1,0,0), Vector3(0,0,0))
+                    velocidade_saida.publish(vel)
+                    vel = Twist(Vector3(0.05,0,0), Vector3(0,0,0))
+                    velocidade_saida.publish(vel)
+                    vel = Twist(Vector3(0.0,0,0), Vector3(0,0,0))
+                    velocidade_saida.publish(vel)
                     ESTADO = 2
+
                 if distancia < 0.5 and id == 150:
+                    vel = Twist(Vector3(0.1,0,0), Vector3(0,0,0))
+                    velocidade_saida.publish(vel)
+                    vel = Twist(Vector3(0.05,0,0), Vector3(0,0,0))
+                    velocidade_saida.publish(vel)
+                    vel = Twist(Vector3(0.0,0,0), Vector3(0,0,0))
+                    velocidade_saida.publish(vel)
                     vira = True
                     ESTADO = 3
+
                 if distancia < 0.5 and id == 50:
+                    vel = Twist(Vector3(0.1,0,0), Vector3(0,0,0))
+                    velocidade_saida.publish(vel)
+                    vel = Twist(Vector3(0.05,0,0), Vector3(0,0,0))
+                    velocidade_saida.publish(vel)
+                    vel = Twist(Vector3(0.0,0,0), Vector3(0,0,0))
+                    velocidade_saida.publish(vel)
                     vira = False
                     ESTADO = 3 
-                if distancia < 0.8 and id ==200:
-                    ESTADO = 5
+
+                if distancia < 0.7 and id ==200:
+                    vel = Twist(Vector3(0.1,0,0), Vector3(0,0,0))
+                    velocidade_saida.publish(vel)
+                    vel = Twist(Vector3(0.05,0,0), Vector3(0,0,0))
+                    velocidade_saida.publish(vel)
+                    vel = Twist(Vector3(0.0,0,0), Vector3(0,0,0))
+                    velocidade_saida.publish(vel)
+                    ESTADO = 4
+
                 if distancia_euclidiana(x_primeira_bif, y_primeira_bif) < 0.2 and vira == True:
+                    vel = Twist(Vector3(0.1,0,0), Vector3(0,0,0))
+                    velocidade_saida.publish(vel)
+                    vel = Twist(Vector3(0.05,0,0), Vector3(0,0,0))
+                    velocidade_saida.publish(vel)
+                    vel = Twist(Vector3(0.0,0,0), Vector3(0,0,0))
+                    velocidade_saida.publish(vel)
                     ESTADO = 2 
+
                 if distancia_euclidiana(x_segunda_bif, y_segunda_bif) < 0.2:
-                    ESTADO = 5
+                    vel = Twist(Vector3(0.1,0,0), Vector3(0,0,0.05))
+                    velocidade_saida.publish(vel)
+                    vel = Twist(Vector3(0.05,0,0), Vector3(0,0,0))
+                    velocidade_saida.publish(vel)
+                    vel = Twist(Vector3(0.0,0,0), Vector3(0,0,0))
+                    velocidade_saida.publish(vel)
+                    ESTADO = 4
 
 
             if ESTADO == 2:                                          #pega o caminho da esquerda na primeira bifurcacao(gira 45 graus)
                 vel = Twist(Vector3(0,0,0), Vector3(0,0,pi/20))
                 for i in range(5):
                     velocidade_saida.publish(vel)
-                    rospy.sleep(0.8)
+                    rospy.sleep(1)
                 x_primeira_bif = x
                 y_primeira_bif = y
 
@@ -224,7 +287,7 @@ if __name__=="__main__":
 
                 ESTADO = 1
             
-            if ESTADO == 3:                                             #vira 180 graus depois de chegar em beco sem saida
+            if ESTADO == 3:                                             #vira 180 graus depois de chegar em beco sem saida ou tocar no creeper
                 vel = Twist(Vector3(0,0,0), Vector3(0,0,pi/5))    
                 for i in range(5):
                     velocidade_saida.publish(vel)
@@ -232,7 +295,7 @@ if __name__=="__main__":
                 ESTADO = 1
             
             
-            if ESTADO == 5:
+            if ESTADO == 4:
                 vel = Twist(Vector3(0,0,0), Vector3(0,0,pi/10))         #pega o caminho da esquerda na bifurcacao do balao (gira 90 graus)
                 for i in range(5):
                     velocidade_saida.publish(vel)
@@ -246,6 +309,34 @@ if __name__=="__main__":
                     rospy.sleep(1)
 
                 ESTADO = 1
+
+
+            if ESTADO == 5:                                             #Gira ate centralizar no creeper
+                if cm_creeper[0] > centro[0]:
+                    #print("direita")
+                    vel = Twist(Vector3(0,0,0), Vector3(0,0,-0.2))
+                if cm_creeper[0] < centro[0]:
+                    #print("esquerda")
+                    vel = Twist(Vector3(0,0,0), Vector3(0,0,0.2))
+                velocidade_saida.publish(vel)
+
+                if abs(cm_creeper[0] - centro[0]) < 10 :
+                    tem_creeper = True
+                    ESTADO = 6
+
+
+            if ESTADO == 6:                                               #vai em direção ao creeper
+                if cm_creeper[0] > centro[0]:
+                    #print("direita")
+                    vel = Twist(Vector3(0.2,0,0), Vector3(0,0,-0.15))
+                if cm_creeper[0] < centro[0]:
+                    #print("esquerda")
+                    vel = Twist(Vector3(0.2,0,0), Vector3(0,0,0.15))
+                velocidade_saida.publish(vel)
+                #print(distancia)
+
+                if distancia < 0.2:
+                    ESTADO = 3 
     
 
     except rospy.ROSInterruptException:
